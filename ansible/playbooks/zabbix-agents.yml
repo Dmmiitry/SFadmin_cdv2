@@ -1,0 +1,70 @@
+---
+- hosts: zabbixagents
+  become: yes
+  vars:
+    zabbix_server: "10.128.0.19"
+    filedest_cent: "/etc/zabbix_agentd.conf"
+    filedest_ubu: "/etc/zabbix/zabbix_agentd.conf"
+  tasks:
+  -  name: Update cache on RedHat Family
+     yum:
+        update_cache=yes
+     when:
+        ansible_os_family == "RedHat"
+  -  name: Update cache on Ubuntu
+     apt:
+        update_cache=yes
+     when:
+        ansible_os_family == "Debian"
+  -  name: Install zabbix-agent on RedHat Family
+     yum:
+        name=zabbix-agent
+        state=latest
+     when:
+        ansible_os_family == "RedHat"
+     notify:
+        zabbix-agent systemd
+  -  name: Install zabbix-agent on Ubuntu
+     apt:
+        name=zabbix-agent
+        state=latest
+     when:
+        ansible_os_family == "Debian"
+     notify:
+        zabbix-agent systemd
+  -  name: Change Server= Zabbix-agent config Ubuntu
+     ansible.builtin.lineinfile:
+        path: '{{filedest_ubu}}'
+        regexp: '^Server='
+        line: 'Server={{zabbix_server}}'
+     when:
+        ansible_os_family == "Debian"
+  -  name: Change Hostname= Zabbix-agent config Ubuntu
+     ansible.builtin.lineinfile:
+        path: '{{filedest_ubu}}'
+        regexp: '^Hostname='
+        line: 'Hostname={{ansible_hostname}}'
+     when:
+        ansible_os_family == "Debian"
+  -  name: Change Server= Zabbix-agent config Centos
+     ansible.builtin.lineinfile:
+        path: '{{filedest_cent}}'
+        regexp: '^Server='
+        line: 'Server={{zabbix_server}}'
+     when:
+        ansible_os_family == "RedHat"
+  -  name: Change Hostname= Zabbix-agent config Centos
+     ansible.builtin.lineinfile:
+        path: '{{filedest_cent}}'
+        regexp: '^Hostname='
+        line: 'Hostname={{ansible_hostname}}'
+     when:
+        ansible_os_family == "RedHat"
+
+  handlers:
+  -  name: zabbix-agent systemd
+     systemd:
+      name: zabbix-agent.service
+      enabled: yes
+      state: restarted
+
